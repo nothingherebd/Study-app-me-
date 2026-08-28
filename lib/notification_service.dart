@@ -3,19 +3,25 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
+
+  static const _channel = AndroidNotificationChannel(
+    'bcs_planner_channel',
+    'Study Reminders',
+    description: 'Alarms and subject/task reminders',
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
+  );
 
   static Future<void> init() async {
     tzdata.initializeTimeZones();
     try {
       final String tzName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(tzName));
-    } catch (_) {
-      // Falls back to whatever default the timezone package picked.
-    }
+    } catch (_) {}
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings(
@@ -29,6 +35,11 @@ class NotificationService {
 
     final androidImpl = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
+
+    // Create the channel eagerly with sound explicitly enabled, rather
+    // than letting it get auto-created (silently) on first notification.
+    await androidImpl?.createNotificationChannel(_channel);
+
     await androidImpl?.requestNotificationsPermission();
     await androidImpl?.requestExactAlarmsPermission();
   }
@@ -53,9 +64,6 @@ class NotificationService {
     return const NotificationDetails(android: android, iOS: ios);
   }
 
-  /// Stable positive 32-bit id derived from a string id + weekday,
-  /// so each weekday of a repeating alarm/subject gets its own slot
-  /// and can be individually cancelled/rescheduled.
   static int _stableId(String baseId, int weekday) {
     final h = baseId.hashCode & 0x7fffffff;
     return (h % 100000) * 10 + weekday;
@@ -72,8 +80,6 @@ class NotificationService {
     return scheduled;
   }
 
-  /// Schedules a weekly-repeating notification for each weekday in [weekdays]
-  /// (1 = Monday ... 7 = Sunday, matching DateTime.weekday).
   static Future<void> scheduleWeekly({
     required String baseId,
     required String title,
@@ -106,8 +112,6 @@ class NotificationService {
     }
   }
 
-  /// Schedules a single one-off notification (used for a task's own
-  /// start-time reminder, which only applies to one specific date).
   static Future<void> scheduleOnce({
     required String baseId,
     required String title,
