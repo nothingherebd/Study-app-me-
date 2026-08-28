@@ -54,12 +54,12 @@ class BcsPlannerApp extends StatelessWidget {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+            side: BorderSide(color: Colors.white.withOpacity(0.06)),
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: surface,
-          indicatorColor: amber.withValues(alpha: 0.22),
+          indicatorColor: amber.withOpacity(0.22),
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             final selected = states.contains(WidgetState.selected);
             return TextStyle(
@@ -87,7 +87,7 @@ class BcsPlannerApp extends StatelessWidget {
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.white,
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+            side: BorderSide(color: Colors.white.withOpacity(0.2)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
@@ -99,7 +99,7 @@ class BcsPlannerApp extends StatelessWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.04),
+          fillColor: Colors.white.withOpacity(0.04),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
@@ -115,7 +115,7 @@ class BcsPlannerApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.white),
           titleMedium: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        dividerColor: Colors.white.withValues(alpha: 0.08),
+        dividerColor: Colors.white.withOpacity(0.08),
       ),
       home: const RootShell(),
     );
