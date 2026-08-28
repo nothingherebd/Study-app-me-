@@ -49,7 +49,7 @@ class BcsPlannerApp extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: surface,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -105,6 +105,57 @@ class BcsPlannerApp extends StatelessWidget {
             borderSide: BorderSide.none,
           ),
           labelStyle: const TextStyle(color: Colors.white60),
+        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: amber,
+          linearTrackColor: Color(0xFF262A36),
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.white),
+          bodyMedium: TextStyle(color: Colors.white),
+          titleMedium: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        dividerColor: Colors.white.withOpacity(0.08),
+      ),
+      home: const RootShell(),
+    );
+  }
+}
+
+class RootShell extends StatefulWidget {
+  const RootShell({super.key});
+  @override
+  State<RootShell> createState() => _RootShellState();
+}
+
+class _RootShellState extends State<RootShell> {
+  int _index = 0;
+
+  static const _titles = ['Plan', 'Subjects', 'Alarms'];
+
+  final _screens = const [
+    PlanScreen(),
+    SubjectsScreen(),
+    AlarmsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_titles[_index])),
+      body: SafeArea(top: false, child: _screens[_index]),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.checklist), label: 'Plan'),
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Subjects'),
+          NavigationDestination(icon: Icon(Icons.alarm), label: 'Alarms'),
+        ],
+      ),
+    );
+  }
+}          labelStyle: const TextStyle(color: Colors.white60),
         ),
         progressIndicatorTheme: const ProgressIndicatorThemeData(
           color: amber,
