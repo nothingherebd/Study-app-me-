@@ -1,64 +1,87 @@
 #!/usr/bin/env python3
 """
-Patches android/app/src/main/AndroidManifest.xml (generated fresh by
-`flutter create`) with the permissions and receivers flutter_local_notifications
-needs for exact, repeating alarms that survive app close and device reboot.
+Robustly patches the freshly-scaffolded Android Gradle files to use a
+modern Kotlin version and compileSdk 35 (required by audioplayers_android).
 
-Run after `flutter create` has produced the android/ folder and before
-`flutter build apk`.
+Handles both the modern plugins{} block style (settings.gradle) and the
+legacy ext.kotlin_version style (root build.gradle), and both `key value`
+and `key = value` Groovy syntax, since Flutter's scaffold template has
+changed this formatting across versions. Every patch prints whether it
+actually matched, so failures are visible in the CI log instead of silent.
 """
+import os
 import re
 import sys
 
-PATH = "android/app/src/main/AndroidManifest.xml"
+SETTINGS = "android/settings.gradle"
+ROOT_BUILD = "android/build.gradle"
+APP_BUILD = "android/app/build.gradle"
 
-PERMISSIONS = """
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.VIBRATE"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
-"""
+KOTLIN_VERSION = "1.9.24"
+COMPILE_SDK = "35"
 
-RECEIVERS = """
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
-            </intent-filter>
-        </receiver>
-"""
 
-def main():
-    with open(PATH, "r", encoding="utf-8") as f:
-        xml = f.read()
+def _patch_file(path, patterns_and_replacements, label):
+    if not os.path.exists(path):
+        print(f"[patch_gradle] {label}: {path} does not exist — skipping")
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+    original = content
+    for pattern, replacement in patterns_and_replacements:
+        content = re.sub(pattern, replacement, content)
+    if content != original:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"[patch_gradle] {label}: patched")
+    else:
+        print(f"[patch_gradle] {label}: WARNING — no matching pattern found, no change made")
 
-    if "SCHEDULE_EXACT_ALARM" not in xml:
-        # Insert permissions right after the opening <manifest ...> tag.
-        xml = re.sub(
-            r"(<manifest[^>]*>)",
-            r"\1" + PERMISSIONS,
-            xml,
-            count=1,
-        )
 
-    if "ScheduledNotificationReceiver" not in xml:
-        # Insert receivers just before </application>.
-        xml = xml.replace("</application>", RECEIVERS + "    </application>")
+def patch_settings_gradle():
+    _patch_file(
+        SETTINGS,
+        [(
+            r'id\s+[\'"]org\.jetbrains\.kotlin\.android[\'"]\s+version\s+[\'"][0-9.]+[\'"]',
+            f'id "org.jetbrains.kotlin.android" version "{KOTLIN_VERSION}"',
+        )],
+        "settings.gradle (plugins block Kotlin version)",
+    )
 
-    with open(PATH, "w", encoding="utf-8") as f:
-        f.write(xml)
 
-    print("AndroidManifest.xml patched successfully.")
+def patch_root_build_gradle():
+    _patch_file(
+        ROOT_BUILD,
+        [(
+            r'ext\.kotlin_version\s*=\s*[\'"][0-9.]+[\'"]',
+            f"ext.kotlin_version = '{KOTLIN_VERSION}'",
+        ), (
+            r'org\.jetbrains\.kotlin:kotlin-gradle-plugin:[0-9.]+',
+            f'org.jetbrains.kotlin:kotlin-gradle-plugin:{KOTLIN_VERSION}',
+        )],
+        "android/build.gradle (ext.kotlin_version / classpath)",
+    )
+
+
+def patch_app_build_gradle():
+    _patch_file(
+        APP_BUILD,
+        [(
+            r'compileSdk(Version)?\s*=?\s*flutter\.compileSdkVersion',
+            f'compileSdk = {COMPILE_SDK}',
+        ), (
+            r'compileSdk(Version)?\s*=?\s*\d+',
+            f'compileSdk = {COMPILE_SDK}',
+        )],
+        "app/build.gradle (compileSdk)",
+    )
+
 
 if __name__ == "__main__":
     try:
-        main()
-    except FileNotFoundError:
-        print(f"Could not find {PATH} — did `flutter create` run first?", file=sys.stderr)
+        patch_settings_gradle()
+        patch_root_build_gradle()
+        patch_app_build_gradle()
+    except Exception as e:
+        print(f"[patch_gradle] ERROR: {e}", file=sys.stderr)
         sys.exit(1)
